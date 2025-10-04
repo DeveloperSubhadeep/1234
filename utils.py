@@ -58,6 +58,150 @@ class temp(object):
     VERIFY = {}
 
 
+
+
+
+
+
+
+
+
+# my code
+
+# BAD_WORDS = {
+#     "PrivateMovieZ",
+#     "toonworld4all",
+#     "themoviesboss",
+#     "1tamilmv",
+#     "tamilblasters",
+#     "1tamilblasters",
+#     "skymovieshd",
+#     "extraflix",
+#     "hdm2",
+#     "moviesmod",
+#     "hdhub4u",
+#     "mkvcinemas",
+#     "primefix",
+#     "join",
+#     "www",
+#     "villa",
+#     "tg",
+#     "original"
+# }
+
+
+
+
+BAD_WORDS = {
+    # Common site / piracy source names
+    "PrivateMovieZ", "Toonworld4all", "TheMoviesBoss", "1TamilMV", "TamilBlasters",
+    "1TamilBlasters", "SkyMoviesHD", "ExtraFlix", "HDM2", "MoviesMod", "HDHub4u",
+    "MkvCinemas", "PrimeFix", "MovieVerse", "Vegamovies", "Filmyzilla", "Moviespapa",
+    "SSRMovies", "KatMovieHD", "9xMovies", "7StarHD", "World4uFree", "MLWBD",
+    "HDMoviesPoint", "MoviesBaba", "Cinevood", "MoviesDrive", "MoviesCounter",
+    "Filmywap", "Mp4Moviez", "Bolly4u", "HDHub", "CineWap", "TheMovieVilla",
+    "MovieVilla", "HDMoviesHub", "TheMovieBay", "TheMoviesflix", "FlixZilla",
+    "MoviesRoot", "FilmyHit", "HDHub4U", "HDFlix", "MoviezVilla", "MoviesTime",
+    "MovieHub", "FlickPrime", "FilmyMeet", "SeriesWorld", "SeriesVerse",
+    "SeriesAdda", "MoviesAdda", "FilmyWorld", "MovieAddict", "MovieVillaHD",
+    "CinemaVilla", "FilmyMonster", "FilmyBoss", "FilmyFly", "FilmyHunk", "FilmyMaza",
+    "FilmyZap", "MoviesGalaxy", "MoviesNation", "MoviesForest", "MoviesDriveHD",
+    "HDPrintMovies", "MoviesRockers", "TamilRockers", "TamilYogi", "CoolMoviez",
+    "Okhatrimaza", "JioRockers", "Isaimini", "KuttyMovies", "Masstamilan", "TodayPK",
+    "MovieMad", "CineRule", "Moviesda", "HDMoviesKing", "MoviesVillaHD", "FilmyDost",
+    "FilmyVerse", "FilmyMania", "MoviesNext", "FlixPoint", "MoviesBossHD", "PrimeHUB",
+    "PrimePlay", "MovieGang", "FlixKing", "CineBazz", "BollyStream", "AllMoviesHub",
+    "WatchHub", "HDWorld", "StreamVilla", "HDFilmBoss", "MovieVerseHD", "CineHD",
+    "HDFilmAdda", "FilmWorld", "CinePoint", "StreamFlix", "MovieRulz", "Movies2Watch",
+    "FilmyGalaxy", "FilmyLink", "Movierulz", "CineBoss", "Movies4U", "MoviesHDWorld",
+    "FilmGuru", "FilmyDon", "MovieCave", "MovieCrate", "CineBase", "MovieKing",
+    "CineHouse", "CinemaKing", "FilmZone", "MovieDex", "CineVault", "CineVilla",
+    "FilmVilla", "MovieStream", "StreamHub", "MoviePoint", "CineWall", "MoviesJar",
+    "FilmyCenter", "CineLand", "MoviesPort", "FilmNation", "CineBay", "MoviePort",
+    "FilmBox", "MovieGenie", "CinePrime", "MovieTrove", "FlixCenter",
+
+    # Telegram or domain keywords (non-quality)
+    "join", "www", "villa", "tg", "original", "moviez", "hub", "flix", "movies",
+    "cinema", "prime", "club", "team", "channel", "official", "group", "download",
+    "link", "dotcom", "dotin", "dotxyz", "dotorg", "dotlol", "dotapp", "dotfun",
+    "dotpro", "dotbar", "dotlive", "net", "store", "plus", "pro", "zone", "world",
+    "planet", "adda", "nation", "space", "tube", "series", "tv", "movie",
+    "box", "villa", "site", "xpress", "media", "buzz", "arena", "corner", "verse",
+    "mania", "club", "land", "linkz","archive", "base", "index", "mirror", "fastdownload",
+    "collection", "backup", "upload", "storage", "directlink", "drive", "gdrive",
+    "cloud", "mega", "uploady", "dropgalaxy", "telegramhub", "movietg", "cinehub",
+    "flixhub", "watchhub", "movielink", "filmyhub", "movietime", "moviestore",
+    "primeverse", "filmverse", "moviecorner", "moviecenter", "movieworld", "cinezone",
+    "cinestream", "cineupdate", "moviesuniverse", "moviesvilla", "cinevilla", "flixvilla"
+}
+
+
+
+
+HALLPRINT_KEYWORDS: List[str] = [
+    'CAM', 'CAMRip', 'TS', 'TSRip', 'Telesync', 'HD-TS', 'HD-CAM',
+    'S Print', 'Screen Print', 'HQ S Print', 'High-Quality Screen Print',
+    'HC', 'Hardcoded', 'WP', 'Workprint', 'HEVC', 'x265'
+]
+
+def is_hallprint(file_name: str) -> bool:
+    """Checks if a file name contains hallprint/low-quality rip keywords."""
+    file_name_lower = file_name.lower()
+    for keyword in HALLPRINT_KEYWORDS:
+        # \b word boundary ব্যবহার করা হয়েছে যাতে শুধু পুরো শব্দটি ম্যাচ হয়
+        if re.search(r'\b' + re.escape(keyword.lower().replace(' ', r'\s*')) + r'\b', file_name_lower):
+            return True
+    return False
+
+def extract_movie_title(file_name: str) -> str:
+    """
+    ফাইল নেম থেকে মুভির মূল টাইটেল (Title) বের করে, 
+    BAD_WORDS ব্যবহার করে চ্যানেল/সাইটের নাম এবং অন্যান্য অপ্রয়োজনীয় শব্দ মুছে দেয়।
+    """
+    name = file_name
+    
+    # ১. BAD_WORDS/Channel Name Cleaning:
+    # BAD_WORDS সেটের প্রতিটি শব্দকে ফাইল নেম থেকে মুছে দেওয়া হচ্ছে।
+    for word in BAD_WORDS:
+        pattern = r'\b' + re.escape(word) + r'\b'
+        name = re.sub(pattern, ' ', name, flags=re.IGNORECASE)
+
+    # ২. Additional Cleanup (যেমন: @channel, [tag])
+    name = re.sub(r'@\w+|\[.*?\]', ' ', name, flags=re.IGNORECASE).strip() 
+    
+    # ৩. Extract Title up to the Year:
+    # সাল (XXXX) খুঁজে বের করে, সাল পর্যন্ত অংশটি নেওয়া
+    match = re.search(r'(\s+\d{4})', name)
+    if match:
+        name_part = name[:match.end()].strip()
+    else:
+        # যদি সাল না থাকে, ফাইল এক্সটেনশন বাদ দেওয়া হয়
+        name_part = os.path.splitext(name)[0].strip()
+
+    # ৪. Final Cleanup and Simplification:
+    # ডট, হাইফেন, আন্ডারস্কোর ইত্যাদির পরিবর্তে স্পেস বসানো এবং অতিরিক্ত স্পেস মুছে ফেলা।
+    name_part = re.sub(r'[\.\-\_]', ' ', name_part)
+    name_part = re.sub(r'\s+', ' ', name_part).strip()
+
+    return name_part.lower() # ডেটাবেস সার্চের জন্য লোয়ারকেস রিটার্ন করা হয়
+
+# --- 👆👆👆 নতুন Hallprint Logic শেষ 👆👆👆 ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 async def is_req_subscribed(bot, query):
     if await db.find_join_req(query.from_user.id):
         return True
