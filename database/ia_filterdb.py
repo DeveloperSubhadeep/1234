@@ -17,6 +17,14 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from datetime import datetime
 import pytz
 
+
+# ia_filterdb.py - ফাইলের শুরুতে import সেকশনে যোগ করুন
+from pyrogram import Client # Pyrogram ক্লায়েন্ট import করা হলো
+from info import LOG_CHANNEL # LOG_CHANNEL import করা হলো
+from utils import extract_movie_title, is_hallprint # utils থেকে নতুন ফাংশন import
+
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 #---------------------------------------------------------
@@ -372,3 +380,91 @@ async def get_qualities(text, qualities: list):
     for q in qualities:
         if q in text:
             quality.append(q)
+
+
+
+
+
+
+
+
+# my code
+
+
+# ia_filterdb.py - Media এবং Media2 ক্লাসের পরে এই ফাংশনটি যোগ করুন।
+
+async def auto_delete_hallprints(client: Client, new_file_name: str):
+    """
+    Deletes hallprint files from the database if a non-hallprint file with the same
+    movie title is indexed and sends a log message with deleted file names.
+    """
+    
+    if is_hallprint(new_file_name):
+        logger.info(f"New file '{new_file_name}' is a hallprint. Not triggering auto-delete.")
+        return
+
+    movie_title_query = extract_movie_title(new_file_name)
+    if not movie_title_query:
+        logger.warning(f"Could not extract a movie title from: {new_file_name}")
+        return
+
+    regex_pattern = re.compile(f".*{re.escape(movie_title_query)}.*", re.IGNORECASE)
+    hallprints_to_delete = []
+
+    # Media এবং Media2 দুটি কালেকশনেই সার্চ করুন
+    for MediaCollection in [Media.collection, Media2.collection]:
+        async for file_doc in MediaCollection.find({'file_name': {'$regex': regex_pattern}}):
+            file_name = file_doc.get('file_name')
+            file_id = file_doc.get('_id')
+            
+            if file_name and file_id:
+                # ডিলিট করার শর্ত: ফাইলটি হলপ্রিন্ট এবং নতুন ফাইলটি নয়
+                if is_hallprint(file_name) and file_name != new_file_name:
+                    hallprints_to_delete.append({
+                        'file_id': file_id, 
+                        'file_name': file_name,
+                        'collection': MediaCollection.name
+                    })
+
+    if not hallprints_to_delete:
+        logger.info(f"No old hallprint files found for deletion for: {movie_title_query}")
+        return
+
+    deleted_file_names = [] 
+
+    # চিহ্নিত হলপ্রিন্ট ফাইলগুলো ডেটাবেস থেকে ডিলিট করুন
+    for file_to_delete in hallprints_to_delete:
+        file_id = file_to_delete['file_id']
+        file_name = file_to_delete['file_name']
+        collection_name = file_to_delete['collection']
+        
+        MediaCollection = Media.collection if collection_name == Media.collection.name else Media2.collection
+        
+        try:
+            result = await MediaCollection.delete_one({'_id': file_id})
+            if result.deleted_count > 0:
+                logger.info(f"Successfully deleted old hallprint file: {file_name}")
+                deleted_file_names.append(file_name) 
+        except Exception as e:
+            logger.error(f"Error deleting file {file_name}: {e}")
+
+    # ডিলিট করা ফাইলগুলোর তালিকা সহ মেসেজ পাঠানো (LOG_CHANNEL এ)
+    if deleted_file_names and LOG_CHANNEL:
+        try:
+            deleted_list_text = f"🗑️ **AUTO-DELETE HALLPRINT LOG** 🗑️\n\n"
+            deleted_list_text += f"**মুভির টাইটেল:** `{movie_title_query.upper()}`\n"
+            deleted_list_text += f"**নতুন ফাইল:** `{new_file_name}`\n\n"
+            deleted_list_text += f"**{len(deleted_file_names)} টি নিম্নমানের ফাইল ডিলিট করা হয়েছে:**\n"
+            
+            for i, name in enumerate(deleted_file_names, 1):
+                deleted_list_text += f"**{i}.** `{name}`\n"
+
+            # LOG_CHANNEL এ মেসেজ পাঠানো
+            await client.send_message(
+                chat_id=LOG_CHANNEL, 
+                text=deleted_list_text, 
+                parse_mode='markdown'
+            )
+
+        except Exception as e:
+            logger.error(f"Error sending deletion log message: {e}")
